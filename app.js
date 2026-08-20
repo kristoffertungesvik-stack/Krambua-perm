@@ -293,15 +293,10 @@ function renderTilsett(rot) {
     (d) => d.mottakarar.length === 0 || d.mottakarar.includes(staten.brukarnamn)
   );
 
-  const tittel = document.createElement("h1");
-  tittel.style.cssText = "font-size:22px;margin-bottom:4px;";
-  tittel.textContent = `Hei, ${staten.namn}`;
-  rot.appendChild(tittel);
-
-  const undertittel = document.createElement("p");
-  undertittel.style.cssText = "color:#8a8980;font-size:13.5px;margin-bottom:24px;";
-  undertittel.textContent = "Her finn du dokument som gjeld deg — HMS, reglar, rutinar og kontraktar.";
-  rot.appendChild(undertittel);
+  const header = document.createElement("div");
+  header.className = "hei-header";
+  header.innerHTML = `<h1>Hei, ${escapeHtml(staten.namn)}</h1><p>Her finn du dokument som gjeld deg — HMS, reglar, rutinar og kontraktar.</p>`;
+  rot.appendChild(header);
 
   if (mine.length === 0) {
     rot.appendChild(lagTomKort("Ingen dokument er delt med deg enno."));
@@ -319,29 +314,35 @@ function renderTilsett(rot) {
   });
 }
 
+const KAT_IKON = { HMS: "🦺", Reglar: "📋", Rutinar: "🔁", Arbeidskontrakt: "📄", Anna: "🗂" };
+
 function lagDokRad(d, adminModus) {
   const rad = document.createElement("div");
   rad.className = "dok-rad";
   const mottakarTekst = d.mottakarar.length === 0 ? "Felles (alle tilsette)" : `Til: ${d.mottakarar.join(", ")}`;
   rad.innerHTML = `
+    <div class="ikon-fil">${KAT_IKON[d.kategori] || "📄"}</div>
     <div class="info">
       <div class="tittel">${escapeHtml(d.tittel)}</div>
       <div class="meta">${adminModus ? `${d.kategori} · ` : ""}${fmtBytes(d.storleik)} · ${new Date(d.lastOpp).toLocaleDateString("nb-NO")}${adminModus ? " · " + mottakarTekst : ""}</div>
     </div>
   `;
+  const knappar = document.createElement("div");
+  knappar.className = "knappar";
   const nedKnapp = document.createElement("button");
   nedKnapp.className = "knapp-liten";
   nedKnapp.textContent = "Last ned";
   nedKnapp.onclick = () => lastNedDokument(d);
-  rad.appendChild(nedKnapp);
+  knappar.appendChild(nedKnapp);
 
   if (adminModus) {
     const slettKnapp = document.createElement("button");
     slettKnapp.className = "knapp-slett";
     slettKnapp.textContent = "✕";
     slettKnapp.onclick = () => slettDokument(d);
-    rad.appendChild(slettKnapp);
+    knappar.appendChild(slettKnapp);
   }
+  rad.appendChild(knappar);
   return rad;
 }
 
@@ -372,9 +373,6 @@ function renderAdmin(rot) {
     return;
   }
 
-  const verktoyrad = document.createElement("div");
-  verktoyrad.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;";
-
   const filterDiv = document.createElement("div");
   filterDiv.className = "kategori-filter";
   ["Alle", ...KAT].forEach((k) => {
@@ -387,15 +385,17 @@ function renderAdmin(rot) {
     };
     filterDiv.appendChild(b);
   });
-  verktoyrad.appendChild(filterDiv);
+  rot.appendChild(filterDiv);
 
+  const lastOppRad = document.createElement("div");
+  lastOppRad.className = "last-opp-rad";
   const lastOppKnapp = document.createElement("button");
   lastOppKnapp.className = "knapp-mork";
+  lastOppKnapp.style.width = "100%";
   lastOppKnapp.textContent = "⭱ Last opp dokument";
   lastOppKnapp.onclick = () => visLastOppModal();
-  verktoyrad.appendChild(lastOppKnapp);
-
-  rot.appendChild(verktoyrad);
+  lastOppRad.appendChild(lastOppKnapp);
+  rot.appendChild(lastOppRad);
 
   const filtrerte =
     staten.filter === "Alle" ? staten.dokIndeks : staten.dokIndeks.filter((d) => d.kategori === staten.filter);
@@ -409,7 +409,7 @@ function renderAdmin(rot) {
 
 function renderTilsetteAdmin(rot) {
   const header = document.createElement("div");
-  header.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;";
+  header.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;flex-wrap:wrap;";
   header.innerHTML = `<h2 style="font-size:16px;">Tilsette (${staten.kontoar.tilsette.length})</h2>`;
   const nyKnapp = document.createElement("button");
   nyKnapp.className = "knapp-mork";
@@ -429,6 +429,7 @@ function renderTilsetteAdmin(rot) {
       const rad = document.createElement("div");
       rad.className = "tilsett-rad";
       rad.innerHTML = `
+        <div class="ikon-fil">👤</div>
         <div class="info">
           <div class="namn">${escapeHtml(t.namn)}</div>
           <div class="meta">Brukarnamn: ${escapeHtml(t.brukarnamn)}</div>
@@ -455,8 +456,8 @@ function renderTilsetteAdmin(rot) {
   pwKort.style.marginTop = "20px";
   pwKort.innerHTML = `
     <h3 style="font-size:13.5px;margin:0 0 10px;">Endre admin-passord</h3>
-    <div style="display:flex;gap:8px;">
-      <input id="admin-pw-felt" type="password" placeholder="Nytt passord" style="flex:1;border:1px solid #ddd9cd;border-radius:6px;padding:9px 12px;font-size:13.5px;" />
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input id="admin-pw-felt" type="password" placeholder="Nytt passord" class="tekstfelt" style="flex:1;min-width:160px;" />
       <button id="admin-pw-lagre" class="knapp-mork">Lagre</button>
     </div>
   `;
@@ -476,13 +477,13 @@ function visNyTilsettSkjema() {
   const rot = document.getElementById("ny-tilsett-skjema");
   rot.innerHTML = `
     <div class="dok-rad" style="display:block;margin-bottom:16px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-        <input id="nt-namn" placeholder="Fullt namn" style="border:1px solid #ddd9cd;border-radius:6px;padding:9px 12px;font-size:13.5px;" />
-        <input id="nt-bn" placeholder="Brukarnamn" autocapitalize="off" style="border:1px solid #ddd9cd;border-radius:6px;padding:9px 12px;font-size:13.5px;" />
+      <div class="grid-2">
+        <input id="nt-namn" placeholder="Fullt namn" class="tekstfelt" />
+        <input id="nt-bn" placeholder="Brukarnamn" autocapitalize="off" class="tekstfelt" />
       </div>
-      <input id="nt-pw" placeholder="Passord" style="width:100%;box-sizing:border-box;border:1px solid #ddd9cd;border-radius:6px;padding:9px 12px;font-size:13.5px;margin-bottom:10px;" />
+      <input id="nt-pw" placeholder="Passord" class="tekstfelt" style="margin-bottom:10px;" />
       <div id="nt-feil" class="login-feil"></div>
-      <button id="nt-lagre" class="knapp-raud">Opprett tilgang</button>
+      <button id="nt-lagre" class="knapp-raud" style="width:100%;">Opprett tilgang</button>
     </div>
   `;
   document.getElementById("nt-lagre").onclick = async () => {

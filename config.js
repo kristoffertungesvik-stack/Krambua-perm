@@ -6,6 +6,6 @@
 //   GREIN: "main",
 const KRAMBUA_CONFIG = {
   OWNER: "kristoffertungesvik-stack",
-  REPO: "krambua-perm",
+  REPO: "krambua---perm",
   GREIN: "main",
 };
